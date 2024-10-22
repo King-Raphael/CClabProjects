@@ -10,12 +10,15 @@
 //     alert('i am a frog');
 // }
 
-let numCircles = 15;
+let numCircles = 25;
 let circles = [];
 let lilies = [];  // 存储多朵花的数组
 let numLilies = 5;  // 花的数量
 let minDistance = 100;  // 花之间的最小水平距离，避免重叠
 let nodes = [];  // 存储控制节点的数组
+let speedn;
+let attractCircles = false;  // 控制圈是否被吸引到鼠标
+let originalPositions = [];  // 记录圈的原始位置
 
 function setup() {
   let canvas = createCanvas(800, 600);
@@ -33,6 +36,7 @@ function setup() {
       color: [random(255), random(255), random(255), 80] // Random color with alpha
     };
     circles.push(newCircle);
+    originalPositions.push({ x: newCircle.x, y: newCircle.y });  // 记录原始位置
   }
 
   // 初始化多朵花，具有随机属性
@@ -70,7 +74,7 @@ function setup() {
 
     // 为每朵花生成叶子
     let leaves = [];
-    let numLeaves = int(random(3, 6));  // 叶子的数量在3到5之间
+    let numLeaves = int(random(3, 5));  // 叶子的数量在3到5之间
     for (let j = 0; j < numLeaves; j++) {
       let leafY = random(stemLength * 0.2, stemLength * 0.8);
       let leafSize = random(0.5, 1.5);
@@ -85,36 +89,45 @@ function setup() {
   // 初始化控制节点
   nodes.push(createNode(50, height / 2));
   nodes.push(createNode(width - 50, height / 2));
+  nodes.push(createNode(width/2, height / 2));
 }
 
 function draw() {
-  background(230, 240, 250);  // 浅色背景突出花朵
+  background(230, 240, 250); 
 
   // Draw moving circles
   noStroke();
   for (let i = 0; i < circles.length; i++) {
     let c = circles[i];
 
-    // Calculate new position based on angle and radius offset
-    let x = c.x + cos(c.angle) * c.radiusOffset;
-    let y = c.y + sin(c.angle) * c.radiusOffset;
+    if (attractCircles) {
+      // Move towards the mouse position when attract mode is on
+      c.x = lerp(c.x, mouseX, 0.05);
+      c.y = lerp(c.y, mouseY, 0.05);
+    } else {
+      // Calculate new position based on angle and radius offset
+      let x = originalPositions[i].x + cos(c.angle) * c.radiusOffset;
+      let y = originalPositions[i].y + sin(c.angle) * c.radiusOffset;
+      c.x = lerp(c.x, x, 0.05);
+      c.y = lerp(c.y, y, 0.05);
+
+      // Update angle to move the circle
+      c.angle += c.speed;
+
+      // Update the center position to create a linear movement effect
+      originalPositions[i].x += random(-1, 1);
+      originalPositions[i].y += random(-1, 1);
+
+      // Reset position if the circle moves out of the canvas
+      if (c.x < 0 || c.x > width || c.y < 0 || c.y > height) {
+        originalPositions[i].x = random(width);
+        originalPositions[i].y = random(height);
+      }
+    }
 
     // Set the circle color
     fill(c.color);
-    ellipse(x, y, c.radius * 2, c.radius * 2);
-
-    // Update angle to move the circle
-    c.angle += c.speed;
-
-    // Update the center position to create a linear movement effect
-    c.x += random(-1, 1);
-    c.y += random(-1, 1);
-
-    // Reset position if the circle moves out of the canvas
-    if (c.x < 0 || c.x > width || c.y < 0 || c.y > height) {
-      c.x = random(width);
-      c.y = random(height);
-    }
+    ellipse(c.x, c.y, c.radius * 2, c.radius * 2);
   }
 
   // 显示和更新花朵
@@ -122,6 +135,9 @@ function draw() {
     let distanceToMouse = dist(mouseX, mouseY, lily.x, lily.y - lily.stemLength);
     if (distanceToMouse < 100) {
       lily.spreadAngle = lerp(lily.spreadAngle, PI / 3, 0.05);  // 花瓣逐渐开放
+      if (mouseIsPressed) {
+        attractCircles = true;
+      }
     } else {
       lily.spreadAngle = lerp(lily.spreadAngle, PI / 12, 0.05);  // 花瓣逐渐闭合
     }
@@ -132,9 +148,13 @@ function draw() {
     pop();
   }
 
+  if (!mouseIsPressed) {
+    attractCircles = false;
+  }
+
   // 显示和更新节点
   for (let node of nodes) {
-    updateNode(node);
+    updateNode(node, random(0.03, 0.09));
     displayNode(node);
     checkCollision(node);
   }
@@ -153,32 +173,32 @@ function createNode(x, y) {
   return {
     x: x,
     y: y,
-    size: 20,
-    trail: []  // 用于存储蹤迹点
+    size: 25,
+    trail: []  // 用于存储踪迹点
   };
 }
 
-function updateNode(node) {
-  node.x = lerp(node.x, mouseX, 0.05);
-  node.y = lerp(node.y, mouseY, 0.01);
+function updateNode(node, speedn) {
+  node.x = lerp(node.x, mouseX, speedn);
+  node.y = lerp(node.y, mouseY, speedn);
 
-  // 添加当前的位置到蹤迹
+  // 添加当前的位置到踪迹
   node.trail.push({ x: node.x, y: node.y });
 
-  // 限制蹤迹长度
+  // 限制踪迹长度
   if (node.trail.length > 30) {
     node.trail.shift();
   }
 }
 
 function displayNode(node) {
-  // 绘制蹤迹
+  // 绘制踪迹
   noFill();
   strokeWeight(2);
   beginShape();
   for (let i = 0; i < node.trail.length; i++) {
     let pos = node.trail[i];
-    let alpha = map(i, 0, node.trail.length - 1, 255, 0);  // 使蹤迹逐渐消失
+    let alpha = map(i, 0, node.trail.length - 1, 255, 0);  // 使踪迹逐渐消失
     stroke(0, 0, 0, alpha);
     curveVertex(pos.x, pos.y);
   }

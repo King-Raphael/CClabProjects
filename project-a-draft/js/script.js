@@ -18,7 +18,8 @@ let minDistance = 100;  // 花之间的最小水平距离，避免重叠
 let nodes = [];  // 存储控制节点的数组
 
 function setup() {
-  createCanvas(800, 600);
+  let canvas = createCanvas(800, 600);
+  canvas.parent("p5-canvas-container");
 
   // Initialize circles with random properties
   for (let i = 0; i < numCircles; i++) {

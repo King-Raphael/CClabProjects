@@ -83,18 +83,18 @@ body {
 }
 
 /* Sketch placeholder */
-/* #p5-canvas-container {
+#p5-canvas-container {
     margin: auto;
     width: 800px;
-} */
+}
 
 /* #p5-canvas-container img {
     width: 800px;
 } */
 
-#p5-canvas-container{
+/* #p5-canvas-container{
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%,-50%);
-}
+} */

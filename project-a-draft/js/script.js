@@ -161,7 +161,7 @@ function draw() {
           attractCircles = true;
           if (lilyClickTimers[i] === null) {
             lilyClickTimers[i] = millis();
-          } else if (millis() - lilyClickTimers[i] > 1000) {
+          } else if (millis() - lilyClickTimers[i] > 1300) {
             lily.extraPetalLayers++;
             lilyGrowthProgress[i] = 0;
             lilyClickTimers[i] = null;

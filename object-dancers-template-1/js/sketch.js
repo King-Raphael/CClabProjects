@@ -18,7 +18,7 @@ function setup() {
   canvas.parent("p5-canvas-container");
 
   // ...except to adjust the dancer's name on the next line:
-  dancer = RaphaelDancer(width / 2, height / 2);
+  dancer = new RaphaelDancer(width / 2, height / 2);
 }
 
 function draw() {
@@ -87,7 +87,7 @@ class RaphaelDancer {
 
     // Draw the stem
     fill(34, 139, 34);
-    rect(-5, -this.size - 40, 10, this.size);
+    rect(-5, -this.size - 40, 10, this.size + 10);
 
     // Draw the leaves growing upwards, connected to the stem
     push();
@@ -118,7 +118,7 @@ class RaphaelDancer {
     }
     fill(255, 153, 0);
     ellipse(0, -this.size - 80, 40, 40);
-
+    this.drawCloak();
     pop();
   }
 
@@ -138,9 +138,6 @@ class RaphaelDancer {
     }
 
 
-
-
-
     // ⬆️ draw your dancer above ⬆️
     // ******** //
 
@@ -154,6 +151,7 @@ class RaphaelDancer {
 
     pop();
   }
+  
   drawReferenceShapes() {
     noFill();
     stroke(255, 0, 0);

@@ -118,7 +118,26 @@ class RaphaelDancer {
     }
     fill(255, 153, 0);
     ellipse(0, -this.size - 80, 40, 40);
-    this.drawCloak();
+
+    // Add a gray semi-transparent Halloween cloak
+    noStroke();
+    fill(100, 100, 100, 100); // Semi-transparent gray
+
+    // Draw the main body of the cloak
+    beginShape();
+    vertex(-this.size / 2 - 20, 40); // Bottom left corner
+    bezierVertex(-this.size / 2 - 40, -this.size / 2, -10, -this.size - 100, 0, -this.size - 120); // Left curve to top
+    bezierVertex(10, -this.size - 100, this.size / 2 + 40, -this.size / 2, this.size / 2 + 20, 40); // Right curve to bottom right corner
+    // Add a tattered effect to the bottom
+    vertex(this.size / 2 + 20, 60);
+    vertex(this.size / 2, 80);
+    vertex(this.size / 2 - 20, 70);
+    vertex(0, 90);
+    vertex(-this.size / 2 + 20, 70);
+    vertex(-this.size / 2, 80);
+    vertex(-this.size / 2 - 20, 60);
+    endShape(CLOSE);
+
     pop();
   }
 
@@ -138,6 +157,9 @@ class RaphaelDancer {
     }
 
 
+
+
+
     // ⬆️ draw your dancer above ⬆️
     // ******** //
 
@@ -151,7 +173,6 @@ class RaphaelDancer {
 
     pop();
   }
-  
   drawReferenceShapes() {
     noFill();
     stroke(255, 0, 0);

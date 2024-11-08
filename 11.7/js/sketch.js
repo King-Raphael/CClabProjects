@@ -2,7 +2,7 @@ let particles = [];
 let trails = [];
 
 function setup() {
-  let canvas = createCanvas(500, 400);
+  let canvas = createCanvas(800, 600);
   canvas.parent("p5-canvas-container");
 }
 

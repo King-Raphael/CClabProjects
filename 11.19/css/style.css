@@ -1,0 +1,68 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+  display: block;
+}
+
+h1 {
+  background-color: darkseagreen;
+  margin-bottom: 10px;
+}
+
+p{
+  font-family: sans-serif;
+  margin-bottom: 5px;
+}
+
+span{
+  background-color: khaki;
+  font-weight: bold;
+}
+
+.font-code{
+  font-family: monospace;
+}
+
+#purple{
+  color: purple;
+}
+
+.wrapper{
+  background-color: pink;
+  width:50%;
+  height:500px;
+  margin: 15px;
+}
+
+.box{
+  background-color:lightcyan;
+  width:200px;
+  height:500px;
+  margin:20px 10px; /*topbottom leftright */
+  padding:30px 50px;
+  border: 1px solid black;
+  position: absolute;
+  right:10%;
+}
+
+.box1{
+  background-color: rgba(130, 85, 92, 0.5);
+  position: fixed;
+  width:50%;
+  height:100px;
+  margin:100px;
+}
+
+.box{
+  background-color:lavenderblush;
+  width:90%;
+  height:100px;
+  margin:20px 10px; /*topbottom leftright */
+  padding:30px 50px;
+  border: 1px solid black;
+  position: absolute;
+  bottom:10%;
+}

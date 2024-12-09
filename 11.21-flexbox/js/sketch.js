@@ -1,5 +1,3 @@
-let emotions = ['Happy', 'Sad', 'Relaxed', 'Energetic'];
-let buttons = [];
 let currentEmotion = '';
 let bgColor;
 let audio;
@@ -7,24 +5,58 @@ let fft;
 let particles = [];
 let targetBgColor;
 let kickSound, drumSound;
-let kickVisuals = []; // State variable for kick visualizations
-let drumVisuals = []; // State variable for drum visualizations
+let kickVisuals = []; 
+let drumVisuals = []; 
 let soundFiles = {};
 let inputBox;
 let freezeTimeout;
+let balls = [];
+let textParticles = []; 
+let isPlaying = false;
+
+const trackLists = {
+  'Happy': [
+    { name: "Mia and sebastian's theme", file: "mia_and_sebastian.mp3" },
+    { name: "City of stars", file: "city_of_stars.mp3" }
+  ],
+  'Sad': [
+    { name: "Glimpse of us", file: "glimpse_of_us.mp3" },
+    { name: "My love mine all mine", file: "my_love_mine_all_mine.mp3" }
+  ],
+  'Relaxed': [
+    { name: "Until i found you", file: "until_i_found_you.mp3" },
+    { name: "Mistery of love", file: "mistery_of_love.mp3" }
+  ],
+  'Energetic': [
+    { name: "Can't Take My Eyes Off You", file: "cant_take_my_eyes_off_you.mp3" },
+    { name: "Another love", file: "another_love.mp3" }
+  ]
+};
+
+let emotionTrackSounds = {};
+let currentTrackIndex = 0;
+
+const Y_AXIS = 1;
+
+// 与文本框交互相关的全局变量
+let letterSequence = [];   // 存储当前循环播放的字母音频
+let letterLoopInterval = null; // 循环播放的定时器
 
 function preload() {
   soundFormats('mp3', 'wav');
-  emotionSounds = {
-    'Happy': loadSound('assets/happy.mp3'),
-    'Sad': loadSound('assets/sad.mp3'),
-    'Relaxed': loadSound('assets/relaxed.mp3'),
-    'Energetic': loadSound('assets/energetic.mp3')
-  };
+
+  for (let e in trackLists) {
+    emotionTrackSounds[e] = [];
+    for (let t of trackLists[e]) {
+      emotionTrackSounds[e].push(loadSound('assets/' + e.toLowerCase() + '/' + t.file));
+    }
+  }
+
   kickSound = loadSound('assets/kick.mp3');
   drumSound = loadSound('assets/drum.wav');
+
   for (let i = 0; i < 26; i++) {
-    let letter = String.fromCharCode(97 + i); // 'a' to 'z'
+    let letter = String.fromCharCode(97 + i); 
     soundFiles[letter] = loadSound('assets/' + letter + '.mp3');
   }
 }
@@ -35,53 +67,110 @@ function setup() {
 
   textAlign(CENTER, CENTER);
   noStroke();
-
-  // Initial background color
   bgColor = color(200);
-
-  // Create emotion buttons
-  for (let i = 0; i < emotions.length; i++) {
-    let btn = createButton(emotions[i]);
-    btn.position(450 + 100 + i * 100, height);
-    btn.style('font-size', '16px');
-    btn.style('padding', '10px');
-    btn.mouseOver(() => btn.style('background-color', '#ccc'));
-    btn.mouseOut(() => btn.style('background-color', '#fff'));
-    btn.mousePressed(() => selectEmotion(emotions[i]));
-    btn.parent("p5-canvas-container");
-    buttons.push(btn);
-  }
-
-  // buttons.parent("p5-canvas-container");
-
   fft = new p5.FFT();
 
   inputBox = select('#input-textbox');
-  // Event listener for input box
   inputBox.input(handleInput);
+
+  // 在文本框按下键盘回车时执行动作
+  inputBox.elt.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      onEnterPressed();
+      e.preventDefault(); // 阻止默认换行
+    }
+  });
+
+  // 点击文本框时，停止循环播放（如果在播放）
+  inputBox.mousePressed(() => {
+    stopLetterLoop();
+  });
+
+  // 增强Ball效果：稍微增大半径或提高透明度
+  for (let i = 0; i < 20; i++) {
+    balls.push(new Ball(width / 2, height / 2, 4));
+  }
+
+  let prevBtn = select('#prev-btn');
+  let playBtn = select('#play-btn');
+  let nextBtn = select('#next-btn');
+
+  prevBtn.mousePressed(() => {
+    if (currentEmotion && emotionTrackSounds[currentEmotion].length > 0) {
+      currentTrackIndex = (currentTrackIndex - 1 + emotionTrackSounds[currentEmotion].length) % emotionTrackSounds[currentEmotion].length;
+      loadCurrentTrack();
+    }
+  });
+
+  nextBtn.mousePressed(() => {
+    if (currentEmotion && emotionTrackSounds[currentEmotion].length > 0) {
+      currentTrackIndex = (currentTrackIndex + 1) % emotionTrackSounds[currentEmotion].length;
+      loadCurrentTrack();
+    }
+  });
+
+  playBtn.mousePressed(() => {
+    if (audio && audio.isLoaded()) {
+      if (isPlaying) {
+        audio.pause();
+        isPlaying = false;
+        playBtn.html('►');
+      } else {
+        audio.play();
+        isPlaying = true;
+        playBtn.html('❚❚');
+      }
+    }
+  });
+
+  let emotionButtons = selectAll('.emotion-btn');
+  emotionButtons.forEach(btn => {
+    btn.mousePressed(() => {
+      let emotion = btn.attribute('data-emotion');
+      selectEmotion(emotion);
+    });
+  });
+
+  updateTrackList([]);
 }
 
 function selectEmotion(emotion) {
   currentEmotion = emotion;
   targetBgColor = getBgColor(emotion);
 
-  // Stop current audio
   if (audio && audio.isPlaying()) {
     audio.stop();
   }
 
-  // Play emotion audio
-  audio = emotionSounds[emotion];
-  audio.loop();
+  let trackCount = emotionTrackSounds[emotion].length;
+  currentTrackIndex = floor(random(trackCount));
 
-  // Hide buttons
-  buttons.forEach(btn => btn.hide());
+  loadCurrentTrack();
+  updateTrackList(trackLists[emotion]);
+}
+
+function loadCurrentTrack() {
+  if (audio && audio.isPlaying()) audio.stop();
+  audio = emotionTrackSounds[currentEmotion][currentTrackIndex];
+  audio.loop();
+  isPlaying = true;
+  let playBtn = select('#play-btn');
+  playBtn.html('❚❚');
+}
+
+function updateTrackList(tracks) {
+  let trackList = select('#track-list');
+  trackList.html('');
+  tracks.forEach(track => {
+    let li = createElement('li', track.name);
+    li.parent(trackList);
+  });
 }
 
 function getBgColor(emotion) {
   switch (emotion) {
     case 'Happy':
-      return color(247, 914, 66, 90);
+      return color(247, 214, 66, 90);
     case 'Sad':
       return color(102, 153, 161);
     case 'Relaxed':
@@ -94,44 +183,35 @@ function getBgColor(emotion) {
 }
 
 function draw() {
-  if (currentEmotion === '') {
-    background(200);
+  if (!currentEmotion) {
+    setGradient(0, 0, width, height, color(224,224,224), color(212,212,212), Y_AXIS);
+    textFont('Helvetica');
     textSize(32);
-    fill(50);
+    fill(60);
+    noStroke();
     text('Choose your emotion', width / 2, height / 2 - 50);
+
+    fill(100, 20);
+    ellipse(width / 2, height / 2 + 50, 100, 100);
   } else {
-    // Smooth transition for background color
     bgColor = lerpColor(bgColor, targetBgColor, 0.02);
     background(bgColor);
 
-    // Get audio spectrum
     let spectrum = fft.analyze();
+    drawCenterCircle();
 
-    // Draw enhanced central sphere
-    push();
-    translate(width / 2, height / 2);
-    let amp = fft.getEnergy(20, 200);
-    let r = map(amp, 0, 255, 100, 200);
-    rotate(frameCount * 0.02); // Rotate faster
-    fill(255, 100);
-    stroke(255);
-    strokeWeight(2);
-    ellipse(0, 0, r);
-
-    // Draw dynamic spiky shape
-    for (let i = 0; i < 360; i += 5) {
-      let len = map(spectrum[i % spectrum.length], 0, 255, 50, 150);
-      let x = cos(radians(i)) * (r / 2);
-      let y = sin(radians(i)) * (r / 2);
-      stroke(map(len, 50, 150, 100, 255), 100, 255);
-      line(0, 0, x, y);
+    if (isPlaying) {
+      let highFreqEnergy = fft.getEnergy(2000, 5000);
+      let particleCount = floor(map(highFreqEnergy, 0, 255, 1, 5));
+      for (let i = 0; i < particleCount; i++) {
+        let angle = random(TWO_PI);
+        let r = random(60,120);
+        let px = width/2 + cos(angle)*r;
+        let py = height/2 + sin(angle)*r;
+        particles.push(new Particle(px, py));
+      }
     }
-    pop();
 
-    // Add glowing particles around sphere
-    for (let i = 0; i < 5; i++) {
-      particles.push(new Particle(width / 2, height / 2));
-    }
     particles.forEach((p, index) => {
       p.update();
       p.show();
@@ -140,7 +220,6 @@ function draw() {
       }
     });
 
-    // Draw kick visualizations
     kickVisuals.forEach((visual, index) => {
       visual.update();
       visual.show();
@@ -149,7 +228,6 @@ function draw() {
       }
     });
 
-    // Draw drum visualizations
     drumVisuals.forEach((visual, index) => {
       visual.update();
       visual.show();
@@ -158,47 +236,113 @@ function draw() {
       }
     });
 
-    // Draw control interface
+    let speedFactor = map(fft.getEnergy(20, 2000), 0, 255, 0.5, 2);
+    for (let i = 0; i < balls.length; i++) {
+      let ball = balls[i];
+      ball.move(speedFactor); 
+      ball.bounce();
+      ball.drawLineTo(balls);
+      ball.display();
+    }
+
+    while (balls.length > 500) {
+      balls.splice(0, 1);
+    }
+
+    for (let i = textParticles.length - 1; i >= 0; i--) {
+      textParticles[i].update();
+      textParticles[i].show();
+      if (textParticles[i].isFinished()) {
+        textParticles.splice(i, 1);
+      }
+    }
+
     drawInterface();
   }
 }
 
-function drawInterface() {
-  // Draw bottom control panel
-  fill(50, 50, 50, 150);
-  rect(0, height - 100, width, 100);
-
-  // Simulate buttons and sliders
-  fill(100);
-  let speedUpButton = rect(width / 2 - 175, height - 80, 50, 50); // Speed Up button
-  let slowDownButton = rect(width / 2 - 75, height - 80, 50, 50);  // Slow Down button
-  let volumeUpButton = rect(width / 2 + 25, height - 80, 50, 50);  // Volume Up button
-  let volumeDownButton = rect(width / 2 + 125, height - 80, 50, 50);  // Volume Down button
-
-  handleButtonInteractions();
-
-  // Simulate sliders
-  fill(150);
-  rect(width / 2 - 200, height - 60, 30, -map(fft.getEnergy(200, 500), 0, 255, 0, 50));
-  rect(width / 2 + 175, height - 60, 30, -map(fft.getEnergy(500, 1000), 0, 255, 0, 50));
+function drawCenterCircle() {
+  push();
+  translate(width / 2, height / 2);
+  let amp = fft.getEnergy(20, 200);
+  let radius = map(amp, 0, 255, 60, 120);
+  noFill();
+  stroke(0);
+  strokeWeight(4);
+  ellipse(0, 0, radius);
+  pop();
 }
 
-function handleButtonInteractions() {
-  if (mouseIsPressed) {
-    if (isButtonPressed(width / 2 - 175, height - 80, 50, 50)) {
-      audio.rate(audio.rate() * 1.01); // Increase playback speed by 1.5 times
-    } else if (isButtonPressed(width / 2 - 75, height - 80, 50, 50)) {
-      audio.rate(audio.rate() / 1.01); // Decrease playback speed by 1.5 times
-    } else if (isButtonPressed(width / 2 + 25, height - 80, 50, 50)) {
-      audio.setVolume(min(audio.getVolume() + 0.15, 1)); // Increase volume by 15%
-    } else if (isButtonPressed(width / 2 + 125, height - 80, 50, 50)) {
-      audio.setVolume(max(audio.getVolume() - 0.15, 0)); // Decrease volume by 15%
+function drawInterface() {
+  if (audio && audio.isLoaded()) {
+    let dur = audio.duration();
+    let cur = audio.currentTime();
+    let angle = map(cur, 0, dur, 0, TWO_PI);
+
+    push();
+    translate(width/2, height - 50);
+    stroke(100);
+    strokeWeight(4);
+    noFill();
+    ellipse(0,0,40,40); 
+    stroke('#9ECFA2'); 
+    arc(0,0,40,40,-HALF_PI,angle - HALF_PI); 
+    pop();
+  }
+}
+
+function handleInput() {
+  let value = inputBox.value().toLowerCase();
+  stopLetterLoop();
+
+  if (value.length > 0) {
+    let lastChar = value[value.length - 1];
+    if (lastChar !== ' ' && soundFiles[lastChar]) {
+      soundFiles[lastChar].play();
     }
   }
 }
 
-function isButtonPressed(x, y, w, h) {
-  return mouseX > x && mouseX < x + w && mouseY > y && mouseY < y + h;
+function onEnterPressed() {
+  // 按下回车时，文本框加入.enter-pressed，显示持续高亮边框
+  inputBox.addClass('enter-pressed');
+
+  let value = inputBox.value().toLowerCase();
+  
+  let chars = value.split('').filter(c => c !== ' ' && soundFiles[c]);
+  letterSequence = chars;
+
+  if (letterSequence.length > 0) {
+    startLetterLoop();
+  }
+}
+
+function startLetterLoop() {
+  stopLetterLoop();
+
+  if (letterSequence.length === 0) return;
+
+  let index = 0;
+  letterLoopInterval = setInterval(() => {
+    let c = letterSequence[index];
+    if (soundFiles[c]) {
+      soundFiles[c].play();
+    }
+    index = (index + 1) % letterSequence.length;
+  }, 500);
+}
+
+function stopLetterLoop() {
+  if (letterLoopInterval) {
+    clearInterval(letterLoopInterval);
+    letterLoopInterval = null;
+  }
+  // 停止循环时取消文本框高亮
+  inputBox.removeClass('enter-pressed');
+}
+
+function mousePressed() {
+  inputBox.removeAttribute('disabled');
 }
 
 function keyPressed() {
@@ -263,7 +407,7 @@ class DrumVisualization {
   show() {
     push();
     stroke(207, 151, 193, 99);
-    strokeWeight(8);
+    strokeWeight(3);
     noFill();
     for (let radius of this.radii) {
       ellipse(this.x, this.y, radius);
@@ -280,21 +424,22 @@ class Particle {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.vx = random(-3, 3);
-    this.vy = random(-3, 3);
+    this.vx = random(-1, 1);
+    this.vy = random(-1, 1);
     this.alpha = 255;
+    this.r = random(6,12); // 粒子半径大小随机
   }
 
   update() {
     this.x += this.vx;
     this.y += this.vy;
-    this.alpha -= 5;
+    this.alpha -= 3;
   }
 
   show() {
     noStroke();
     fill(255, this.alpha);
-    ellipse(this.x, this.y, 12);
+    ellipse(this.x, this.y, this.r);
   }
 
   isFinished() {
@@ -302,26 +447,98 @@ class Particle {
   }
 }
 
-function handleInput() {
-  let value = inputBox.value().toLowerCase();
+class TextParticle {
+  constructor(char) {
+    this.char = char;
+    this.x = random(width * 0.3, width * 0.7);
+    this.y = -20; 
+    this.vx = random(-0.5, 0.5);
+    this.vy = random(1, 2);
+    this.alpha = 255;
+    this.lifespan = 180;
+  }
 
-  // Play the corresponding sound for the new character
-  if (value.length > 0) {
-    let lastChar = value[value.length - 1];
-    
-    if (soundFiles[lastChar]) {
-      soundFiles[lastChar].play();
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.alpha = map(this.lifespan, 0, 180, 0, 255);
+    this.lifespan--;
+  }
+
+  show() {
+    push();
+    textFont('Helvetica');
+    textSize(20);
+    fill(60, this.alpha);
+    noStroke();
+    text(this.char, this.x, this.y);
+    pop();
+  }
+
+  isFinished() {
+    return this.lifespan <= 0;
+  }
+}
+
+class Ball {
+  constructor(x, y, rad) {
+    this.x = x;
+    this.y = y;
+    this.rad = rad;
+    this.xSpd = random(-2, 2);
+    this.ySpd = random(-2, 2);
+    let emotionColor = getBgColor(currentEmotion);
+    this.r = red(emotionColor);
+    this.g = green(emotionColor);
+    this.b = blue(emotionColor);
+  }
+
+  bounce() {
+    if (this.x < 0 || this.x > width) {
+      this.xSpd *= -1;
+    }
+    if (this.y < 0 || this.y > height) {
+      this.ySpd *= -1;
     }
   }
 
-  // Restart the freeze timer
-  clearTimeout(freezeTimeout);
-  freezeTimeout = setTimeout(() => {
-    inputBox.attribute('disabled', 'true');
-  }, 3000);
+  drawLineTo(otherBalls) {
+    let maxLength = 40;
+    for (let other of otherBalls) {
+      if (other !== this) {
+        let distance = dist(this.x, this.y, other.x, other.y);
+        if (distance < maxLength) {
+          let alpha = map(distance, 0, maxLength, 50, 0);
+          stroke(255, alpha);
+          line(this.x, this.y, other.x, other.y);
+        }
+      }
+    }
+  }
+
+  move(speedFactor) {
+    this.x += this.xSpd * speedFactor;
+    this.y += this.ySpd * speedFactor;
+  }
+
+  display() {
+    push();
+    // Ball更明显些，可稍微提高填充不透明度或加粗边界
+    stroke(this.r, this.g, this.b, 150);
+    fill(this.r, this.g, this.b, 100);
+    ellipse(this.x, this.y, this.rad * 2, this.rad * 2);
+    pop();
+  }
 }
 
-// To handle unfreezing on click anywhere
-function mousePressed() {
-  inputBox.removeAttribute('disabled');
+function setGradient(x, y, w, h, c1, c2, axis) {
+  noFill();
+  if (axis === Y_AXIS) {
+    for (let i = y; i <= y+h; i++) {
+      let inter = map(i, y, y+h, 0, 1);
+      let c = lerpColor(c1, c2, inter);
+      stroke(c);
+      line(x, i, x+w, i);
+    }
+  }
 }

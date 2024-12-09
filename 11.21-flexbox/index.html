@@ -1,81 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCLab Project - Music Player</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- 保留原有字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Jacquard+12&display=swap" rel="stylesheet">
-
-  <title>CCLab Project</title>
+  <!-- 新增Inter字体用于辅助文本 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" type="text/css" href="css/style.css">
 
   <script src="lib/p5.js"></script>
   <script src="lib/p5.sound.js"></script>
 </head>
-
 <body>
-  
   <div class="sidebar">
-    <div class="profile" id="profile-box">
+    <div class="profile">
       <img src="assets/profile.JPG" alt="Profile" class="avatar">
-      <p>Raphael</p>
-      <p>Interactive Media Artist</p>
-      
+      <p class="artist-name">Raphael</p>
+      <p class="artist-desc secondary-text">Interactive Media Artist</p>
     </div>
-    <div class="music-list" id="music-list-box">
-      <h3>Music composed</h3>
-      <ul>
-        <li>Music 1</li>
-        <li>Music 2</li>
-        <li>Music 3</li>
+    <div class="music-list">
+      <h3>Tracks</h3>
+      <ul id="track-list">
+        <!-- 根据当前emotion动态更新 -->
       </ul>
     </div>
   </div>
 
-  <div class="wrapper" id="wrapper">
-    <div class="title-container">
-      <h1>Raphael Project 2</h1>
+  <div class="main-content">
+    <header class="title-container">
+      <h1>Rhythmic Recollections</h1>
+      <p class="tagline">"Memories fade, music remains."</p>
+      <p class="sub-tagline secondary-text">Raphael Project 2</p>
+    </header>
+
+    <div class="emotion-selection">
+      <button class="emotion-btn" data-emotion="Happy">Happy</button>
+      <button class="emotion-btn" data-emotion="Sad">Sad</button>
+      <button class="emotion-btn" data-emotion="Relaxed">Relaxed</button>
+      <button class="emotion-btn" data-emotion="Energetic">Energetic</button>
     </div>
 
     <div id="p5-canvas-container">
-      <input type="text" id="input-textbox" placeholder="Type here...">
+      <input type="text" id="input-textbox" placeholder="Type a memory...">
+      <!-- p5 canvas will be created here by JS -->
     </div>
 
-    <div class="nav-container">
-      <div class="nav">
-        <a href="">void</a>
-      </div>
-      <div class="nav">
-        <a href="">void</a>
-      </div>
-      <div class="nav">
-        <a href="">void</a>
-      </div>
-      <div class="nav">
-        <a href="">void</a>
-      </div>
-    </div>
-
-    <div class="flexbox-container">
-      <div class="box"> Inspirition </div>
-      <div class="box"
-      id="box1"> Description </div>
-      <div class="box"
-      id="box1"> Function </div>
-      <div class="box"> Instruction </div>
-      <div class="box" 
-      id="special-box"> More Information </div>
-      <div class="box"> Credits </div>
+    <div class="controls">
+      <button id="prev-btn" class="control-btn">&#9664;</button>
+      <button id="play-btn" class="control-btn">&#9658;</button>
+      <button id="next-btn" class="control-btn">&#9654;&#9654;</button>
     </div>
   </div>
 
-  
-  <!-- the script tag below should always be at the bottom, right before the closing body tag -->
   <script src="js/sketch.js"></script>
 </body>
-
 </html>

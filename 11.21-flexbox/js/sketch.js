@@ -1,15 +1,14 @@
 let currentEmotion = '';
 let bgColor;
+let targetBgColor;
 let audio;
 let fft;
 let particles = [];
-let targetBgColor;
 let kickSound, drumSound;
 let kickVisuals = []; 
 let drumVisuals = []; 
 let soundFiles = {};
 let inputBox;
-let freezeTimeout;
 let balls = [];
 let textParticles = []; 
 let isPlaying = false;
@@ -37,10 +36,13 @@ let emotionTrackSounds = {};
 let currentTrackIndex = 0;
 
 const Y_AXIS = 1;
+let letterSequence = [];   
+let letterLoopInterval = null;
 
-// 与文本框交互相关的全局变量
-let letterSequence = [];   // 存储当前循环播放的字母音频
-let letterLoopInterval = null; // 循环播放的定时器
+let words = []; 
+let wordParticles = []; 
+let wordSpawnInterval = 120; 
+let lastWordSpawnTime = 0;
 
 function preload() {
   soundFormats('mp3', 'wav');
@@ -68,27 +70,28 @@ function setup() {
   textAlign(CENTER, CENTER);
   noStroke();
   bgColor = color(200);
+  targetBgColor = bgColor; // 初始化targetBgColor
   fft = new p5.FFT();
 
   inputBox = select('#input-textbox');
   inputBox.input(handleInput);
 
-  // 在文本框按下键盘回车时执行动作
   inputBox.elt.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       onEnterPressed();
-      e.preventDefault(); // 阻止默认换行
+      e.preventDefault();
     }
   });
 
-  // 点击文本框时，停止循环播放（如果在播放）
   inputBox.mousePressed(() => {
+    // 用户再次点击输入框输入文字时，清空words并取消高亮
+    words = [];
+    inputBox.removeClass('enter-pressed');
     stopLetterLoop();
   });
 
-  // 增强Ball效果：稍微增大半径或提高透明度
   for (let i = 0; i < 20; i++) {
-    balls.push(new Ball(width / 2, height / 2, 4));
+    balls.push(new Ball(width / 2, height / 2, 5));
   }
 
   let prevBtn = select('#prev-btn');
@@ -184,6 +187,8 @@ function getBgColor(emotion) {
 
 function draw() {
   if (!currentEmotion) {
+    // 未选择emotion时背景固定
+    background(bgColor);
     setGradient(0, 0, width, height, color(224,224,224), color(212,212,212), Y_AXIS);
     textFont('Helvetica');
     textSize(32);
@@ -194,6 +199,7 @@ function draw() {
     fill(100, 20);
     ellipse(width / 2, height / 2 + 50, 100, 100);
   } else {
+    // 有emotion时平滑过渡背景颜色
     bgColor = lerpColor(bgColor, targetBgColor, 0.02);
     background(bgColor);
 
@@ -205,7 +211,7 @@ function draw() {
       let particleCount = floor(map(highFreqEnergy, 0, 255, 1, 5));
       for (let i = 0; i < particleCount; i++) {
         let angle = random(TWO_PI);
-        let r = random(60,120);
+        let r = random(60,120); 
         let px = width/2 + cos(angle)*r;
         let py = height/2 + sin(angle)*r;
         particles.push(new Particle(px, py));
@@ -249,6 +255,23 @@ function draw() {
       balls.splice(0, 1);
     }
 
+    if (words.length > 0 && frameCount - lastWordSpawnTime > wordSpawnInterval) {
+      let w = random(words);
+      wordParticles.push(new WordParticle(w));
+      lastWordSpawnTime = frameCount;
+    }
+
+    for (let i = wordParticles.length - 1; i >= 0; i--) {
+      let wp = wordParticles[i];
+      wp.update();
+      wp.show();
+      if (wp.isFinished()) {
+        wordParticles.splice(i, 1);
+      }
+    }
+
+    drawConnectionsBetweenWordParticlesAndBalls();
+
     for (let i = textParticles.length - 1; i >= 0; i--) {
       textParticles[i].update();
       textParticles[i].show();
@@ -258,6 +281,22 @@ function draw() {
     }
 
     drawInterface();
+  }
+}
+
+function drawConnectionsBetweenWordParticlesAndBalls() {
+  if (wordParticles.length === 0 || balls.length === 0) return;
+
+  let maxLength = 50;
+  for (let wp of wordParticles) {
+    for (let b of balls) {
+      let distance = dist(wp.x, wp.y, b.x, b.y);
+      if (distance < maxLength) {
+        let alpha = map(distance, 0, maxLength, 255, 0);
+        stroke(255, alpha);
+        line(wp.x, wp.y, b.x, b.y);
+      }
+    }
   }
 }
 
@@ -285,7 +324,7 @@ function drawInterface() {
     strokeWeight(4);
     noFill();
     ellipse(0,0,40,40); 
-    stroke('#9ECFA2'); 
+    stroke('#7A9A7A'); 
     arc(0,0,40,40,-HALF_PI,angle - HALF_PI); 
     pop();
   }
@@ -294,17 +333,11 @@ function drawInterface() {
 function handleInput() {
   let value = inputBox.value().toLowerCase();
   stopLetterLoop();
-
-  if (value.length > 0) {
-    let lastChar = value[value.length - 1];
-    if (lastChar !== ' ' && soundFiles[lastChar]) {
-      soundFiles[lastChar].play();
-    }
-  }
+  inputBox.removeClass('enter-pressed');
+  words = [];
 }
 
 function onEnterPressed() {
-  // 按下回车时，文本框加入.enter-pressed，显示持续高亮边框
   inputBox.addClass('enter-pressed');
 
   let value = inputBox.value().toLowerCase();
@@ -312,9 +345,13 @@ function onEnterPressed() {
   let chars = value.split('').filter(c => c !== ' ' && soundFiles[c]);
   letterSequence = chars;
 
+  words = value.split(' ').filter(w => w.trim().length > 0);
+
   if (letterSequence.length > 0) {
     startLetterLoop();
   }
+
+  lastWordSpawnTime = frameCount;
 }
 
 function startLetterLoop() {
@@ -337,8 +374,6 @@ function stopLetterLoop() {
     clearInterval(letterLoopInterval);
     letterLoopInterval = null;
   }
-  // 停止循环时取消文本框高亮
-  inputBox.removeClass('enter-pressed');
 }
 
 function mousePressed() {
@@ -427,7 +462,7 @@ class Particle {
     this.vx = random(-1, 1);
     this.vy = random(-1, 1);
     this.alpha = 255;
-    this.r = random(6,12); // 粒子半径大小随机
+    this.r = random(5, 12); 
   }
 
   update() {
@@ -444,6 +479,41 @@ class Particle {
 
   isFinished() {
     return this.alpha < 0;
+  }
+}
+
+class WordParticle {
+  constructor(word) {
+    this.word = word;
+    this.x = random(width);
+    this.y = random(height);
+    this.life = 180;
+    this.sizeStart = 10;
+    this.sizeEnd = 50;
+    this.alphaStart = 255;
+    this.alphaEnd = 0;
+  }
+
+  update() {
+    this.life--;
+  }
+
+  show() {
+    let t = 1 - (this.life / 180);
+    let size = lerp(this.sizeStart, this.sizeEnd, t);
+    let alpha = lerp(this.alphaStart, this.alphaEnd, t);
+
+    push();
+    textFont('Helvetica');
+    textSize(size);
+    fill(60, alpha);
+    noStroke();
+    text(this.word, this.x, this.y);
+    pop();
+  }
+
+  isFinished() {
+    return this.life <= 0;
   }
 }
 
@@ -503,12 +573,12 @@ class Ball {
   }
 
   drawLineTo(otherBalls) {
-    let maxLength = 40;
+    let maxLength = 50; 
     for (let other of otherBalls) {
       if (other !== this) {
         let distance = dist(this.x, this.y, other.x, other.y);
         if (distance < maxLength) {
-          let alpha = map(distance, 0, maxLength, 50, 0);
+          let alpha = map(distance, 0, maxLength, 100, 0);
           stroke(255, alpha);
           line(this.x, this.y, other.x, other.y);
         }
@@ -523,9 +593,8 @@ class Ball {
 
   display() {
     push();
-    // Ball更明显些，可稍微提高填充不透明度或加粗边界
     stroke(this.r, this.g, this.b, 150);
-    fill(this.r, this.g, this.b, 100);
+    fill(this.r, this.g, this.b, 120);
     ellipse(this.x, this.y, this.rad * 2, this.rad * 2);
     pop();
   }

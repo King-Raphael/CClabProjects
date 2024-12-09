@@ -1,10 +1,6 @@
 html, body, h1, h2, h3, h4, h5, h6, p, ul, li, button {
   margin: 0;
   padding: 0;
-  font-family: "Jacquard 12", system-ui, sans-serif;
-  font-weight: 400;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -12,15 +8,18 @@ body {
   color: #333;
   display: flex;
   flex-direction: row;
+  font-family: "Jacquard 12", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 次级文本（如Raphael Project 2、Interactive Media Artist、Track列表）使用Inter字体 */
-.secondary-text {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
+/* 辅助文字使用Noto Sans */
+.artist-desc,
+.music-list li,
+.sub-tagline {
+  font-family: "Noto Sans", sans-serif;
 }
 
-/* 侧边栏 */
 .sidebar {
   width: 220px;
   background-color: #f0f0f0;
@@ -72,10 +71,8 @@ body {
   color: #333;
 }
 
-/* Track 列表字体也使用secondary-text */
-#track-list li {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
+.music-list ul {
+  list-style: none;
 }
 
 .music-list li {
@@ -89,7 +86,6 @@ body {
   color: #E05C5C;
 }
 
-/* 主内容区 */
 .main-content {
   flex: 1;
   display: flex;
@@ -122,9 +118,9 @@ body {
 .title-container .sub-tagline {
   font-size: 14px;
   color: #999;
+  font-family: "Noto Sans", sans-serif;
 }
 
-/* Emotion 按钮组 */
 .emotion-selection {
   margin-top: 20px;
   display: flex;
@@ -144,7 +140,6 @@ body {
   background-color: #eee;
 }
 
-/* p5画布容器 */
 #p5-canvas-container {
   width: 900px;
   display: flex;
@@ -164,12 +159,11 @@ body {
   transition: border-color 0.3s ease;
 }
 
-/* 按下回车键后，文本框边缘持续高亮， */
+/* 回车后文本框高亮颜色稍微亮一些，例如#CED9B0 */
 #input-textbox.enter-pressed {
-  border-color: #9ECFA2;  /* 柔和的浅绿色，与进度环呼应 */
+  border-color: #CED9B0;
 }
 
-/* 控制器按钮 */
 .controls {
   display: flex;
   align-items: center;
@@ -191,7 +185,6 @@ body {
   color: #7f7f7f;
 }
 
-/* 画布样式 */
 canvas {
   display: block;
   border: 1px solid #ddd;

@@ -13,7 +13,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 辅助文字使用Noto Sans */
 .artist-desc,
 .music-list li,
 .sub-tagline {
@@ -159,7 +158,6 @@ body {
   transition: border-color 0.3s ease;
 }
 
-/* 回车后文本框高亮颜色稍微亮一些，例如#CED9B0 */
 #input-textbox.enter-pressed {
   border-color: #CED9B0;
 }

@@ -32,6 +32,9 @@ const trackLists = {
   ]
 };
 
+// Special Word List
+const specialWords = ["gu", "bye", "hi", "ee", "aa"];
+
 let emotionTrackSounds = {};
 let currentTrackIndex = 0;
 
@@ -47,6 +50,7 @@ let lastWordSpawnTime = 0;
 function preload() {
   soundFormats('mp3', 'wav');
 
+  // Load emotion related audio
   for (let e in trackLists) {
     emotionTrackSounds[e] = [];
     for (let t of trackLists[e]) {
@@ -57,9 +61,15 @@ function preload() {
   kickSound = loadSound('assets/kick.mp3');
   drumSound = loadSound('assets/drum.wav');
 
+  // Load letter audio a-z
   for (let i = 0; i < 26; i++) {
     let letter = String.fromCharCode(97 + i); 
     soundFiles[letter] = loadSound('assets/' + letter + '.mp3');
+  }
+
+  // Load special word audio
+  for (let sw of specialWords) {
+    soundFiles[sw] = loadSound('assets/' + sw + '.mp3');
   }
 }
 
@@ -70,7 +80,7 @@ function setup() {
   textAlign(CENTER, CENTER);
   noStroke();
   bgColor = color(200);
-  targetBgColor = bgColor; // 初始化targetBgColor
+  targetBgColor = bgColor; 
   fft = new p5.FFT();
 
   inputBox = select('#input-textbox');
@@ -84,7 +94,7 @@ function setup() {
   });
 
   inputBox.mousePressed(() => {
-    // 用户再次点击输入框输入文字时，清空words并取消高亮
+    // When clicking the input box again to enter text, the words are cleared and the highlight is canceled
     words = [];
     inputBox.removeClass('enter-pressed');
     stopLetterLoop();
@@ -187,7 +197,6 @@ function getBgColor(emotion) {
 
 function draw() {
   if (!currentEmotion) {
-    // 未选择emotion时背景固定
     background(bgColor);
     setGradient(0, 0, width, height, color(224,224,224), color(212,212,212), Y_AXIS);
     textFont('Helvetica');
@@ -195,11 +204,9 @@ function draw() {
     fill(60);
     noStroke();
     text('Choose your emotion', width / 2, height / 2 - 50);
-
     fill(100, 20);
     ellipse(width / 2, height / 2 + 50, 100, 100);
   } else {
-    // 有emotion时平滑过渡背景颜色
     bgColor = lerpColor(bgColor, targetBgColor, 0.02);
     background(bgColor);
 
@@ -330,11 +337,32 @@ function drawInterface() {
   }
 }
 
+// When typing, if there is text, play the last letter once (if there is sound); if a space is entered, check for special words
 function handleInput() {
   let value = inputBox.value().toLowerCase();
   stopLetterLoop();
   inputBox.removeClass('enter-pressed');
+
+  // Clear words to avoid duplicate generation
   words = [];
+
+  if (value.length > 0) {
+    let lastChar = value[value.length - 1];
+
+    // If the last character is a letter and has a corresponding sound, play it once
+    if (lastChar !== ' ' && soundFiles[lastChar]) {
+      soundFiles[lastChar].play();
+    }
+
+    // If a space is entered, it means the word ends. Check whether the last word is a special word.
+    if (lastChar === ' ') {
+      let splitted = value.trim().split(' ');
+      let lastWord = splitted[splitted.length - 1];
+      if (specialWords.includes(lastWord) && soundFiles[lastWord]) {
+        soundFiles[lastWord].play();
+      }
+    }
+  }
 }
 
 function onEnterPressed() {
@@ -342,10 +370,20 @@ function onEnterPressed() {
 
   let value = inputBox.value().toLowerCase();
   
+  // Generate a looping sequence based on the input characters (letterSequence)
   let chars = value.split('').filter(c => c !== ' ' && soundFiles[c]);
   letterSequence = chars;
 
+  // Press Enter to confirm the final words list
   words = value.split(' ').filter(w => w.trim().length > 0);
+
+  // Check if the last word is a special word (if the user presses Enter to end the input)
+  if (words.length > 0) {
+    let lastWord = words[words.length - 1];
+    if (specialWords.includes(lastWord) && soundFiles[lastWord]) {
+      soundFiles[lastWord].play();
+    }
+  }
 
   if (letterSequence.length > 0) {
     startLetterLoop();
@@ -401,11 +439,9 @@ class KickVisualization {
     this.y = height / 2;
     this.framesLeft = 30;
   }
-
   update() {
     this.framesLeft--;
   }
-
   show() {
     push();
     fill(139, 172, 224, 100);
@@ -418,7 +454,6 @@ class KickVisualization {
     }
     pop();
   }
-
   isFinished() {
     return this.framesLeft <= 0;
   }
@@ -434,11 +469,9 @@ class DrumVisualization {
       this.radii.push(random(100, 300));
     }
   }
-
   update() {
     this.framesLeft--;
   }
-
   show() {
     push();
     stroke(207, 151, 193, 99);
@@ -449,7 +482,6 @@ class DrumVisualization {
     }
     pop();
   }
-
   isFinished() {
     return this.framesLeft <= 0;
   }
